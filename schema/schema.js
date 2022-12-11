@@ -1,11 +1,15 @@
 const { kurslar, egitmenler } = require("../db");
 
+const Kurs = require("../models/Kurs");
+const Egitmen = require("../models/Egitmen");
+
 const {
   GraphQLObjectType,
   GraphQLID,
   GraphQLString,
   GraphQLSchema,
   GraphQLList,
+  GraphQLNonNull,
 } = require("graphql");
 
 const EgitmenType = new GraphQLObjectType({
@@ -24,6 +28,12 @@ const KursType = new GraphQLObjectType({
     isim: { type: GraphQLString },
     aciklama: { type: GraphQLString },
     durum: { type: GraphQLString },
+    egitmen: {
+      type: EgitmenType,
+      resolve(parent, args) {
+        return Egitmen.findById(parent.id);
+      },
+    },
   }),
 });
 
@@ -34,31 +44,62 @@ const RootQuery = new GraphQLObjectType({
       type: EgitmenType,
       args: { id: { type: GraphQLID } },
       resolve(parent, args) {
-        return egitmenler.find((egitmen) => egitmen.id === args.id);
+        return Egitmen.findById(args);
       },
     },
     egitmenler: {
       type: new GraphQLList(EgitmenType),
       resolve(parent, args) {
-        return egitmenler;
+        return Egitmen.find();
       },
     },
     kurs: {
       type: KursType,
       args: { id: { type: GraphQLID } },
       resolve(parent, args) {
-        return kurslar.find((kurs) => kurs.id === args.id);
+        return Kurs.findById(args.id);
       },
     },
     kurslar: {
       type: new GraphQLList(KursType),
       resolve(parent, args) {
-        return kurslar;
+        return Kurs.find();
       },
     },
   },
 });
 
+const RootMutation = new GraphQLObjectType({
+  name: "Mutation",
+  fields: {
+    egitmenEkle: {
+      type: EgitmenType,
+      args: {
+        isim: { type: new GraphQLNonNull(GraphQLString) },
+        email: { type: new GraphQLNonNull(GraphQLString) },
+      },
+      resolve(parent, args) {
+        const egitmen = new Egitmen({
+          isim: args.isim,
+          email: args.email,
+        });
+
+        return egitmen.save();
+      },
+    },
+    egitmenSil: {
+      type: EgitmenType,
+      args: {
+        id: {type: new GraphQLNonNull(GraphQLID)}
+      },
+      resolve(parent,args) {
+        return Egitmen.findByIdAndRemove(args.id);
+      }
+    }
+  },
+});
+
 module.exports = new GraphQLSchema({
   query: RootQuery,
+  mutation: RootMutation,
 });
