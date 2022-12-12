@@ -9,7 +9,7 @@ const KursSchema = new mongoose.Schema({
   },
   durum: {
     type: String,
-    enum: ["yayinda", "oluşturuluyor", "panlaniyor"],
+    enum: ["yayinda", "oluşturuluyor", "planlaniyor"],
   },
   egitmenId: {
     type: mongoose.Schema.Types.ObjectId,

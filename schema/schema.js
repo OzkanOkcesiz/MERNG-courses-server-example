@@ -10,6 +10,7 @@ const {
   GraphQLSchema,
   GraphQLList,
   GraphQLNonNull,
+  GraphQLEnumType,
 } = require("graphql");
 
 const EgitmenType = new GraphQLObjectType({
@@ -90,12 +91,76 @@ const RootMutation = new GraphQLObjectType({
     egitmenSil: {
       type: EgitmenType,
       args: {
-        id: {type: new GraphQLNonNull(GraphQLID)}
+        id: { type: new GraphQLNonNull(GraphQLID) },
       },
-      resolve(parent,args) {
+      resolve(parent, args) {
         return Egitmen.findByIdAndRemove(args.id);
-      }
-    }
+      },
+    },
+    kursEkle: {
+      type: KursType,
+      args: {
+        isim: { type: new GraphQLNonNull(GraphQLString) },
+        aciklama: { type: new GraphQLNonNull(GraphQLString) },
+        durum: {
+          type: new GraphQLEnumType({
+            name: "KursDurumlar",
+            values: {
+              yayin: { value: "yayinda" },
+              olus: { value: "oluşturuluyor" },
+              plan: { value: "planlaniyor" },
+            },
+          }),
+          defaultValue: "planlaniyor",
+        },
+        egitmenId: { type: new GraphQLNonNull(GraphQLID) },
+      },
+      resolve(parent, args) {
+        const kurs = new Kurs({
+          isim: args.isim,
+          aciklama: args.aciklama,
+          durum: args.durum,
+          egitmenId: args.egitmenId,
+        });
+        return kurs.save();
+      },
+    },
+    kursSil: {
+      type: KursType,
+      args: {
+        id: { type: new GraphQLNonNull(GraphQLID) },
+      },
+      resolve(parent, args) {
+        return Kurs.findByIdAndRemove(args.id);
+      },
+    },
+    kursGuncelle: {
+      type: KursType,
+      args: {
+        id: { type: new GraphQLNonNull(GraphQLID) },
+        isim: { type: GraphQLString },
+        aciklama: { type: GraphQLString },
+        durum: {
+          type: new GraphQLEnumType({
+            name: "KursGuncellemeDurumlar",
+            values: {
+              yayin: { value: "yayinda" },
+              olus: { value: "oluşturuluyor" },
+              plan: { value: "planlaniyor" },
+            },
+          }),
+        },
+      },
+      resolve(parent, args) {
+        return Kurs.findByIdAndUpdate(args.id, {
+          $set: {
+            isim: args.isim,
+            aciklama: args.aciklama,
+            durum: args.durum,
+          },
+        }, {new:true});
+      },
+    },
   },
 });
 
