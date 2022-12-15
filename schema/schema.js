@@ -39,7 +39,7 @@ const KursType = new GraphQLObjectType({
 });
 
 const RootQuery = new GraphQLObjectType({
-  name: "RootQueryType",
+  name: "Queries",
   fields: {
     egitmen: {
       type: EgitmenType,
@@ -71,7 +71,7 @@ const RootQuery = new GraphQLObjectType({
 });
 
 const RootMutation = new GraphQLObjectType({
-  name: "Mutation",
+  name: "Mutations",
   fields: {
     egitmenEkle: {
       type: EgitmenType,
