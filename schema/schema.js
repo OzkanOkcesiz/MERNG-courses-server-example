@@ -1,7 +1,8 @@
-const { kurslar, egitmenler } = require("../db");
-
 const Kurs = require("../models/Kurs");
 const Egitmen = require("../models/Egitmen");
+const Yetkili = require("../models/Yetkili");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 const {
   GraphQLObjectType,
@@ -11,6 +12,7 @@ const {
   GraphQLList,
   GraphQLNonNull,
   GraphQLEnumType,
+  GraphQLError,
 } = require("graphql");
 
 const EgitmenType = new GraphQLObjectType({
@@ -32,9 +34,19 @@ const KursType = new GraphQLObjectType({
     egitmen: {
       type: EgitmenType,
       resolve(parent, args) {
-        return Egitmen.findById(parent.id);
+        return Egitmen.findById(parent.egitmenId);
       },
     },
+  }),
+});
+
+const YetkiliType = new GraphQLObjectType({
+  name: "Yetkili",
+  fields: () => ({
+    id: { type: GraphQLID },
+    email: { type: GraphQLString },
+    parola: { type: GraphQLString },
+    token: { type: GraphQLString },
   }),
 });
 
@@ -65,6 +77,13 @@ const RootQuery = new GraphQLObjectType({
       type: new GraphQLList(KursType),
       resolve(parent, args) {
         return Kurs.find();
+      },
+    },
+    yetkili: {
+      type: YetkiliType,
+      args: { id: { type: GraphQLID } },
+      resolve(parent, args) {
+        return Yetkili.findById(args.id);
       },
     },
   },
@@ -152,13 +171,81 @@ const RootMutation = new GraphQLObjectType({
         },
       },
       resolve(parent, args) {
-        return Kurs.findByIdAndUpdate(args.id, {
-          $set: {
-            isim: args.isim,
-            aciklama: args.aciklama,
-            durum: args.durum,
+        return Kurs.findByIdAndUpdate(
+          args.id,
+          {
+            $set: {
+              isim: args.isim,
+              aciklama: args.aciklama,
+              durum: args.durum,
+            },
           },
-        }, {new:true});
+          { new: true }
+        );
+      },
+    },
+    yetkiliEkle: {
+      type: YetkiliType,
+      args: {
+        email: { type: new GraphQLNonNull(GraphQLString) },
+        parola: { type: new GraphQLNonNull(GraphQLString) },
+      },
+      async resolve(parent, args) {
+        const yetkili = new Yetkili({
+          email: args.email,
+          parola: args.parola,
+        });
+
+        const res = await yetkili.save();
+
+        const token = jwt.sign(
+          {
+            id: res.id,
+          },
+          "aos-secret",
+          { expiresIn: "2h" }
+        );
+
+        return {
+          ...res._doc,
+          id: res._id,
+          token,
+        };
+      },
+    },
+    yetkiliGiris: {
+      type: YetkiliType,
+      args: {
+        email: { type: new GraphQLNonNull(GraphQLString) },
+        parola: { type: new GraphQLNonNull(GraphQLString) },
+      },
+      async resolve(parent, args) {
+        const email = args.email;
+
+        const yetkili = await Yetkili.findOne({ email });
+
+        if (yetkili) {
+          const sonuc = await bcrypt.compare(args.parola, yetkili.parola);
+
+          if (sonuc) {
+            const token = jwt.sign(
+              {
+                id: yetkili.id,
+              },
+              "aos-secret",
+              { expiresIn: "2h" }
+            );
+            return {
+              ...yetkili._doc,
+              id: yetkili._id,
+              token,
+            };
+          }
+
+          throw new GraphQLError("Parola Yanlış");
+        }
+
+        throw new GraphQLError('Yetkili Bulunamadı')
       },
     },
   },
